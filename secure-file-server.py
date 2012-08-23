@@ -23,11 +23,13 @@ parser = OptionParser()
 parser.add_option("-f", "--file-store", dest="file_store", default="downloads", help="Where the static files are served from")
 parser.add_option("-e", "--expiry-time", dest="expiry", default=300, help="Seconds before a token is deleted after being accessed")
 parser.add_option("-c", "--certificate", dest="ssl_cert", default="secure-combined.pem", help="SSL Key and PEM combo file")
+parser.add_option("--redis-host", dest="redis_host", default="localhost", help="Hostname of Redis Datastore")
+parser.add_option("--redis-port", dest="redis_port", default=6379, help="Redis Port")
 (options, args) = parser.parse_args()
 
 
 app = bottle.Bottle(catchall=False)
-redb = redis.StrictRedis(host='localhost', port=6379)
+redb = redis.StrictRedis(host=options.redis_host, port=options.redis_port)
 
 
 @app.route("/download/<filename>")
