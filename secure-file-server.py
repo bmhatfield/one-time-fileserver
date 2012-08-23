@@ -3,7 +3,7 @@
 A simple one-time-pad style fileserver.
 
 The goal of this application is to serve files, but only for a short period of time.
-Once a URL has been requested, it will expire. Administrators can re-generate tokens for files, if needed.
+Once a URL has been requested, its token will expire. Administrators can re-generate tokens for files, if needed.
 
 Dependencies:
     python-paste
@@ -34,11 +34,11 @@ redb = redis.StrictRedis(host=options.redis_host, port=options.redis_port)
 
 @app.route("/download/<filename>")
 def download_handler(filename):
-    if filename == redb.get(bottle.request.query.t):
-        redb.expire(bottle.request.query.t, options.expiry)
+    if filename == redb.get(bottle.request.query.token):
+        redb.expire(bottle.request.query.token, options.expiry)
         return bottle.static_file(filename, root=options.file_store)
     else:
-        bottle.abort(403, "No Valid Token.")
+        bottle.abort(403, "Valid Token Not Found.")
 
 
 @app.post("/upload/<filename>")
