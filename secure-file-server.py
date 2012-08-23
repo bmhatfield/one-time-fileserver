@@ -12,12 +12,18 @@ Dependencies:
     redis-server
     python-redis
 """
-
-import redis
-import bottle
-from paste import httpserver
-from paste.translogger import TransLogger
 from optparse import OptionParser
+
+# http://redis.io/commands
+import redis
+
+# http://bottlepy.org/docs/dev/api.html
+import bottle
+
+# http://pythonpaste.org/modules/httpserver.html
+from paste import httpserver
+# http://pythonpaste.org/modules/translogger.html
+from paste.translogger import TransLogger
 
 parser = OptionParser()
 parser.add_option("-f", "--file-store", dest="file_store", default="downloads", help="Where the static files are served from")
@@ -26,7 +32,6 @@ parser.add_option("-c", "--certificate", dest="ssl_cert", default="secure-combin
 parser.add_option("--redis-host", dest="redis_host", default="localhost", help="Hostname of Redis Datastore")
 parser.add_option("--redis-port", dest="redis_port", default=6379, help="Redis Port")
 (options, args) = parser.parse_args()
-
 
 app = bottle.Bottle(catchall=False)
 redb = redis.StrictRedis(host=options.redis_host, port=options.redis_port)
