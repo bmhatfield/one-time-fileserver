@@ -9,10 +9,14 @@ Dependencies:
     python-paste
     python-bottle
     python-openssl
+    python-daemon
     redis-server
     python-redis
 """
 from optparse import OptionParser
+
+# http://pypi.python.org/pypi/python-daemon/
+import daemon
 
 # http://redis.io/commands
 import redis
@@ -57,4 +61,9 @@ def token_generator(filename):
     # Create and store a token for the provided filename
     pass
 
-httpserver.serve(TransLogger(app), host='0.0.0.0', port='443', ssl_pem=options.ssl_cert)
+try:
+    with daemon.DaemonContext(working_directory="."):
+        httpserver.serve(TransLogger(app), host='0.0.0.0', port='443', ssl_pem=options.ssl_cert)
+except Exception as e:
+    with open("daemon.log", 'a+') as fh:
+        fh.write(str(e))
