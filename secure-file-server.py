@@ -15,21 +15,26 @@ Dependencies:
 
 import redis
 import bottle
-
 from paste import httpserver
 from paste.translogger import TransLogger
+from optparse import OptionParser
+
+parser = OptionParser()
+parser.add_option("-f", "--file-store", dest="file_store", default="downloads", help="Where the static files are served from")
+parser.add_option("-e", "--expiry-time", dest="expiry", default=300, help="Seconds before a token is deleted after being accessed")
+parser.add_option("-c", "--certificate", dest="ssl_cert", default="secure-combined.pem", help="SSL Key and PEM combo file")
+(options, args) = parser.parse_args()
+
 
 app = bottle.Bottle(catchall=False)
 redb = redis.StrictRedis(host='localhost', port=6379)
-
-expire_secs = 600
 
 
 @app.route("/download/<filename>")
 def download_handler(filename):
     if filename == redb.get(bottle.request.query.t):
-        redb.expire(bottle.request.query.t, expire_secs)
-        return bottle.static_file(filename, root='downloads')
+        redb.expire(bottle.request.query.t, options.expiry)
+        return bottle.static_file(filename, root=options.file_store)
     else:
         bottle.abort(403, "No Valid Token.")
 
@@ -45,5 +50,4 @@ def token_generator(filename):
     # Create and store a token for the provided filename
     pass
 
-httpserver.serve(TransLogger(app), host='0.0.0.0', port='443',
-                    ssl_pem="secure.osfix.net-combined.pem")
+httpserver.serve(TransLogger(app), host='0.0.0.0', port='443', ssl_pem=options.ssl_cert)
