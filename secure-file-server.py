@@ -58,8 +58,7 @@ def download_handler(filename):
 
 @app.get("/upload")
 def upload_view():
-    # Presents view for upload actions
-    pass
+    return template("upload_view")
     
 
 @app.post("/upload")
