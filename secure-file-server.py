@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
-A simple one-time-pad style fileserver.
+A simple one-time-fileserver.
 
-The goal of this application is to serve files, but only for a short period of time.
+The goal of this application is to serve files, but only for a short period of time after the first request.
 Once a URL has been requested, its token will expire. Administrators can re-generate tokens for files, if needed.
 
 Dependencies:
@@ -13,6 +13,10 @@ Dependencies:
     redis-server
     python-redis
 """
+import os
+import random
+import hashlib
+
 from optparse import OptionParser
 
 # http://pypi.python.org/pypi/python-daemon/
@@ -38,41 +42,62 @@ parser.add_option("-c", "--certificate", dest="ssl_cert", default="secure-combin
 parser.add_option("--dev-mode", dest="dev_mode", action='store_true', default=False, help="Disable SSL, Disable Daemon Mode")
 parser.add_option("--redis-host", dest="redis_host", default="localhost", help="Hostname of Redis Datastore")
 parser.add_option("--redis-port", dest="redis_port", default=6379, help="Redis Port")
+parser.add_option("--chunk-size", dest="chunk_size", default=4096, help="Chunk Size for reading from a socket")
 (options, args) = parser.parse_args()
 
 app = bottle.Bottle(catchall=False)
 redb = redis.StrictRedis(host=options.redis_host, port=options.redis_port)
 
+def token(filename, redb=redb):
+    digest = hashlib.sha256(filename + str(random.random())).hexdigest()
+    redb.set(digest, filename)
+    return digest
 
-@app.route("/download/<filename>")
-def download_handler(filename):
-    try:
-        if filename == redb.get(bottle.request.query.token):
-            redb.expire(bottle.request.query.token, options.expiry)
-            return bottle.static_file(filename, root=options.file_store)
-        else:
-            bottle.abort(403, "Valid Token Not Found.")
-    except:
-        bottle.abort(403, "Valid Token Not Found.")
+def admin_token(filename, redb=redb):
+    digest = hashlib.sha256("admin" + filename + str(random.random())).hexdigest()
+    redb.set("admin:%s" % digest, filename)
+    return digest
 
 
 @app.get("/upload")
 def upload_view():
-    return template("upload_view")
+    return bottle.template("upload_view")
     
 
 @app.post("/upload")
 def upload_handler():
-    filename = request.files.filename
-    filedata = request.files.file
-    # Accepts an upload as a POST stream to be saved to disk
-    pass
+    data = bottle.request.files['data']
+    
+    with open(os.path.join(options.file_store, data.filename), 'wb') as handle:
+        while True:
+            chunk = data.file.read(options.chunk_size)
+            if chunk:
+                handle.write(chunk)
+            else:
+                break
+
+    return bottle.template("upload_result",
+                            filename=data.filename,
+                            token=token(data.filename),
+                            admin_token=admin_token(data.filename))
+
+
+@app.route("/download/<filename>")
+def download_handler(filename):
+    if filename == redb.get(bottle.request.query.token):
+        redb.expire(bottle.request.query.token, options.expiry)
+        return bottle.static_file(filename, root=options.file_store, download=filename)
+    else:
+        bottle.abort(403, "Valid Token Not Found.")
 
 
 @app.route("/token/<filename>")
 def token_generator(filename):
-    # Create and store a token for the provided filename
-    pass
+    if filename == redb.get("admin:%s" % (bottle.request.query.token)):
+        return bottle.template("token_generator_result", filename=filename, token=(filename))
+    else:
+        bottle.abort(403, "Valid Token Not Found.")
+
 
 if not options.dev_mode:
     try:
