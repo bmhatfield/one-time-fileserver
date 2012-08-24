@@ -10,8 +10,8 @@ Dependencies:
     python-bottle
     python-openssl
     python-daemon
-    redis-server
     python-redis
+    redis-server
 """
 import os
 import random
@@ -48,10 +48,12 @@ parser.add_option("--chunk-size", dest="chunk_size", default=4096, help="Chunk S
 app = bottle.Bottle(catchall=False)
 redb = redis.StrictRedis(host=options.redis_host, port=options.redis_port)
 
+
 def token(filename, redb=redb):
     digest = hashlib.sha256(filename + str(random.random())).hexdigest()
     redb.set(digest, filename)
     return digest
+
 
 def admin_token(filename, redb=redb):
     digest = hashlib.sha256("admin" + filename + str(random.random())).hexdigest()
@@ -62,12 +64,12 @@ def admin_token(filename, redb=redb):
 @app.get("/upload")
 def upload_view():
     return bottle.template("upload_view")
-    
+
 
 @app.post("/upload")
 def upload_handler():
     data = bottle.request.files['data']
-    
+
     with open(os.path.join(options.file_store, data.filename), 'wb') as handle:
         while True:
             chunk = data.file.read(options.chunk_size)
@@ -94,7 +96,7 @@ def download_handler(filename):
 @app.route("/token/<filename>")
 def token_generator(filename):
     if filename == redb.get("admin:%s" % (bottle.request.query.token)):
-        return bottle.template("token_generator_result", filename=filename, token=(filename))
+        return bottle.template("token_generator_result", filename=filename, token=token(filename))
     else:
         bottle.abort(403, "Valid Token Not Found.")
 
