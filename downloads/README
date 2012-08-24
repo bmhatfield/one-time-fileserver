@@ -1,0 +1,2 @@
+This directory is the default destination for file uploads. Alternate root directories can be specified with --file-store=/path/to/dir
+

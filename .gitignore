@@ -13,7 +13,9 @@ sdist
 develop-eggs
 .installed.cfg
 
+# Misc
 .DS_Store
+downloads/*
 
 # Installer logs
 pip-log.txt
